@@ -11,8 +11,6 @@ let malloc n =
 module With_bigarray = struct
   type t = (char, int8_unsigned_elt, c_layout) Array1.t
 
-  external unsafe_get   : t -> int -> char          = "%caml_ba_unsafe_ref_1"
-  external unsafe_set   : t -> int -> char  -> unit = "%caml_ba_unsafe_set_1"
   external unsafe_get8  : t -> int -> int           = "%caml_ba_unsafe_ref_1"
   external unsafe_set8  : t -> int -> int   -> unit = "%caml_ba_unsafe_set_1"
   external unsafe_get16 : t -> int -> int           = "%caml_bigstring_get16u"
@@ -45,8 +43,6 @@ end
 module With_bytes = struct
   type t = string
 
-  external unsafe_get   : t -> int -> char          = "%bytes_unsafe_get"
-  external unsafe_set   : t -> int -> char  -> unit = "%bytes_unsafe_set"
   external unsafe_get8  : t -> int -> int           = "%bytes_unsafe_get"
   external unsafe_set8  : t -> int -> int   -> unit = "%bytes_unsafe_set"
   external unsafe_get16 : t -> int -> int           = "%caml_string_get16u"
@@ -76,27 +72,27 @@ module With_bytes = struct
   let%bench "" = exchange buf
 end
 
-module With_raw_pointers = struct
-  type t = nativeint
-
-  external unsafe_get   : nativeint -> char          = "%load8"
-  external unsafe_set   : nativeint -> char  -> unit = "%store8"
+module Raw_pointers_compiler_prims = struct
   external unsafe_get8  : nativeint -> int           = "%load8"
   external unsafe_set8  : nativeint -> int   -> unit = "%store8"
   external unsafe_get16 : nativeint -> int           = "%load16"
   external unsafe_set16 : nativeint -> int   -> unit = "%store16"
   external unsafe_get32 : nativeint -> int32         = "%load32"
   external unsafe_set32 : nativeint -> int32 -> unit = "%store32"
+end
+
+module With_raw_pointers = struct
+  type t = nativeint
+
+  open Raw_pointers_compiler_prims
 
   let shift ptr ofs =
     Nativeint.add ptr (Nativeint.of_int ofs)
 
-  let unsafe_get   t ofs = unsafe_get   (shift t ofs)
   let unsafe_get8  t ofs = unsafe_get8  (shift t ofs)
   let unsafe_get16 t ofs = unsafe_get16 (shift t ofs)
   let unsafe_get32 t ofs = unsafe_get32 (shift t ofs)
 
-  let unsafe_set   t ofs x = unsafe_set   (shift t ofs) x
   let unsafe_set8  t ofs x = unsafe_set8  (shift t ofs) x
   let unsafe_set16 t ofs x = unsafe_set16 (shift t ofs) x
   let unsafe_set32 t ofs x = unsafe_set32 (shift t ofs) x
@@ -126,14 +122,7 @@ end
 module With_2aligned_raw_pointers_as_int = struct
   type t = int (* 2-aligned pointer *)
 
-  external unsafe_get   : nativeint -> char          = "%load8"
-  external unsafe_set   : nativeint -> char  -> unit = "%store8"
-  external unsafe_get8  : nativeint -> int           = "%load8"
-  external unsafe_set8  : nativeint -> int   -> unit = "%store8"
-  external unsafe_get16 : nativeint -> int           = "%load16"
-  external unsafe_set16 : nativeint -> int   -> unit = "%store16"
-  external unsafe_get32 : nativeint -> int32         = "%load32"
-  external unsafe_set32 : nativeint -> int32 -> unit = "%store32"
+  open Raw_pointers_compiler_prims
 
   let wrap ptr =
     assert (Nativeint.logand ptr 1n = 0n);
@@ -143,12 +132,10 @@ module With_2aligned_raw_pointers_as_int = struct
       (Nativeint.shift_left (Nativeint.of_int ptr) 1)
       (Nativeint.of_int ofs)
 
-  let unsafe_get   t ofs = unsafe_get   (unwrap_shift t ofs)
   let unsafe_get8  t ofs = unsafe_get8  (unwrap_shift t ofs)
   let unsafe_get16 t ofs = unsafe_get16 (unwrap_shift t ofs)
   let unsafe_get32 t ofs = unsafe_get32 (unwrap_shift t ofs)
 
-  let unsafe_set   t ofs x = unsafe_set   (unwrap_shift t ofs) x
   let unsafe_set8  t ofs x = unsafe_set8  (unwrap_shift t ofs) x
   let unsafe_set16 t ofs x = unsafe_set16 (unwrap_shift t ofs) x
   let unsafe_set32 t ofs x = unsafe_set32 (unwrap_shift t ofs) x
@@ -175,27 +162,27 @@ module With_2aligned_raw_pointers_as_int = struct
   let%bench "" = exchange buf
 end
 
+module Raw_pointers_c_stubs = struct
+  external unsafe_get8  : (nativeint [@unboxed]) -> (int   [@untagged])         = "" "caml_load_int8"   [@@noalloc]
+  external unsafe_set8  : (nativeint [@unboxed]) -> (int   [@untagged]) -> unit = "" "caml_store_int8"  [@@noalloc]
+  external unsafe_get16 : (nativeint [@unboxed]) -> (int   [@untagged])         = "" "caml_load_int16"  [@@noalloc]
+  external unsafe_set16 : (nativeint [@unboxed]) -> (int   [@untagged]) -> unit = "" "caml_store_int16" [@@noalloc]
+  external unsafe_get32 : (nativeint [@unboxed]) -> (int32 [@unboxed] )         = "" "caml_load_int32"  [@@noalloc]
+  external unsafe_set32 : (nativeint [@unboxed]) -> (int32 [@unboxed] ) -> unit = "" "caml_store_int32" [@@noalloc]
+end
+
 module With_raw_pointers_c = struct
   type t = nativeint
 
-  external unsafe_get   : nativeint -> char          = "caml_load_int8"
-  external unsafe_set   : nativeint -> char  -> unit = "caml_store_int8"
-  external unsafe_get8  : nativeint -> int           = "caml_load_int8"
-  external unsafe_set8  : nativeint -> int   -> unit = "caml_store_int8"
-  external unsafe_get16 : nativeint -> int           = "caml_load_int16"
-  external unsafe_set16 : nativeint -> int   -> unit = "caml_store_int16"
-  external unsafe_get32 : nativeint -> int32         = "caml_load_int32"
-  external unsafe_set32 : nativeint -> int32 -> unit = "caml_store_int32"
+  open Raw_pointers_c_stubs
 
   let shift ptr ofs =
     Nativeint.add ptr (Nativeint.of_int ofs)
 
-  let unsafe_get   t ofs = unsafe_get   (shift t ofs)
   let unsafe_get8  t ofs = unsafe_get8  (shift t ofs)
   let unsafe_get16 t ofs = unsafe_get16 (shift t ofs)
   let unsafe_get32 t ofs = unsafe_get32 (shift t ofs)
 
-  let unsafe_set   t ofs x = unsafe_set   (shift t ofs) x
   let unsafe_set8  t ofs x = unsafe_set8  (shift t ofs) x
   let unsafe_set16 t ofs x = unsafe_set16 (shift t ofs) x
   let unsafe_set32 t ofs x = unsafe_set32 (shift t ofs) x
@@ -225,14 +212,7 @@ end
 module With_2aligned_raw_pointers_c = struct
   type t = int (* 2-aligned pointer *)
 
-  external unsafe_get   : nativeint -> char          = "caml_load_int8"
-  external unsafe_set   : nativeint -> char  -> unit = "caml_store_int8"
-  external unsafe_get8  : nativeint -> int           = "caml_load_int8"
-  external unsafe_set8  : nativeint -> int   -> unit = "caml_store_int8"
-  external unsafe_get16 : nativeint -> int           = "caml_load_int16"
-  external unsafe_set16 : nativeint -> int   -> unit = "caml_store_int16"
-  external unsafe_get32 : nativeint -> int32         = "caml_load_int32"
-  external unsafe_set32 : nativeint -> int32 -> unit = "caml_store_int32"
+  open Raw_pointers_c_stubs
 
   let wrap ptr =
     assert (Nativeint.logand ptr 1n = 0n);
@@ -242,12 +222,10 @@ module With_2aligned_raw_pointers_c = struct
       (Nativeint.shift_left (Nativeint.of_int ptr) 1)
       (Nativeint.of_int ofs)
 
-  let unsafe_get   t ofs = unsafe_get   (unwrap_shift t ofs)
   let unsafe_get8  t ofs = unsafe_get8  (unwrap_shift t ofs)
   let unsafe_get16 t ofs = unsafe_get16 (unwrap_shift t ofs)
   let unsafe_get32 t ofs = unsafe_get32 (unwrap_shift t ofs)
 
-  let unsafe_set   t ofs x = unsafe_set   (unwrap_shift t ofs) x
   let unsafe_set8  t ofs x = unsafe_set8  (unwrap_shift t ofs) x
   let unsafe_set16 t ofs x = unsafe_set16 (unwrap_shift t ofs) x
   let unsafe_set32 t ofs x = unsafe_set32 (unwrap_shift t ofs) x

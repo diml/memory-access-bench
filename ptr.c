@@ -1,62 +1,34 @@
-/**************************************************************************/
-/*                                                                        */
-/*                                 OCaml                                  */
-/*                                                                        */
-/*                  Jeremie Dimino, Jane Street Group, LLC                */
-/*                                                                        */
-/*   Copyright 2016 Institut National de Recherche en Informatique et     */
-/*     en Automatique.                                                    */
-/*                                                                        */
-/*   All rights reserved.  This file is distributed under the terms of    */
-/*   the GNU Lesser General Public License version 2.1, with the          */
-/*   special exception on linking described in the file LICENSE.          */
-/*                                                                        */
-/**************************************************************************/
+#include <caml/mlvalues.h>
 
-#include "get_set.h"
-
-#define Ptr_val(v) (unsigned char*)Nativeint_val(v)
-
-CAMLprim value caml_load_int8(value ptr)
+intnat caml_load_int8(int8_t *ptr)
 {
-  return Val_int(Byte_u(Ptr_val(ptr), 0));
+  return *ptr;
 }
 
-CAMLprim value caml_load_int16(value ptr)
+intnat caml_load_int16(int16_t *ptr)
 {
-  return mem_get16(Ptr_val(ptr));
+  return *ptr;
 }
 
-CAMLprim value caml_load_int32(value ptr)
+int32_t caml_load_int32(int32_t *ptr)
 {
-  return mem_get32(Ptr_val(ptr));
+  return *ptr;
 }
 
-CAMLprim value caml_load_int64(value ptr)
+value caml_store_int8(int8_t *ptr, intnat val)
 {
-  return mem_get64(Ptr_val(ptr));
-}
-
-CAMLprim value caml_store_int8(value ptr, value newval)
-{
-  Byte_u(Ptr_val(ptr), 0) = Int_val(newval);
+  *ptr = val;
   return Val_unit;
 }
 
-CAMLprim value caml_store_int16(value ptr, value newval)
+value caml_store_int16(int16_t *ptr, intnat val)
 {
-  mem_set16(Ptr_val(ptr), newval);
+  *ptr = val;
   return Val_unit;
 }
 
-CAMLprim value caml_store_int32(value ptr, value newval)
+value caml_store_int32(int32_t *ptr, int32_t val)
 {
-  mem_set32(Ptr_val(ptr), newval);
-  return Val_unit;
-}
-
-CAMLprim value caml_store_int64(value ptr, value newval)
-{
-  mem_set64(Ptr_val(ptr), newval);
+  *ptr = val;
   return Val_unit;
 }
