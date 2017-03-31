@@ -2,8 +2,8 @@
  ((name mem_bench)
   (libraries (bigarray))
   (modules (mem_bench))
-  (library_flags (:standard -linkall))
-  (preprocess (pps (ppx_bench)))))
+  (library_flags (-linkall))
+  (preprocess (pps (ppx_bench ppx_driver.runner)))))
 
 (executable
  ((name main)
