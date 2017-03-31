@@ -1,0 +1,11 @@
+(library
+ ((name mem_bench)
+  (libraries (bigarray))
+  (modules (mem_bench))
+  (library_flags (:standard -linkall))
+  (preprocess (pps (ppx_bench)))))
+
+(executable
+ ((name main)
+  (modules (main))
+  (libraries (mem_bench core_bench.inline_benchmarks))))
