@@ -3,6 +3,8 @@
   (libraries (bigarray))
   (modules (mem_bench))
   (library_flags (-linkall))
+  (c_names (ptr))
+  (ocamlopt_flags (:standard -S))
   (preprocess (pps (ppx_bench ppx_driver.runner)))))
 
 (executable

@@ -77,66 +77,34 @@ module With_bytes = struct
 end
 
 module With_raw_pointers = struct
-  type t = nativeint
-
-  external unsafe_get   : t -> int -> char          = "%load8"
-  external unsafe_set   : t -> int -> char  -> unit = "%store8"
-  external unsafe_get8  : t -> int -> int           = "%load8"
-  external unsafe_set8  : t -> int -> int   -> unit = "%store8"
-  external unsafe_get16 : t -> int -> int           = "%load16"
-  external unsafe_set16 : t -> int -> int   -> unit = "%store16"
-  external unsafe_get32 : t -> int -> int32         = "%load32"
-  external unsafe_set32 : t -> int -> int32 -> unit = "%store32"
-
-  (*$print_string bench*)
-  let exchange packet =
-    let a = unsafe_get16 packet 0 in
-    let b = unsafe_get32 packet 2 in
-    unsafe_set16 packet 0 (unsafe_get16 packet 6);
-    unsafe_set32 packet 2 (unsafe_get32 packet 8);
-    unsafe_set16 packet 6 a;
-    unsafe_set32 packet 8 b;
-    unsafe_set16 packet 24 0;
-    let a = unsafe_get32 packet 26 in
-    unsafe_set32 packet 26 (unsafe_get32 packet 30);
-    unsafe_set32 packet 30 a;
-    let a = unsafe_get16 packet 34 in
-    unsafe_set16 packet 34 (unsafe_get16 packet 36);
-    unsafe_set16 packet 36 a;
-    unsafe_set16 packet 40 0
-  (*$*)
-
-  let buf = malloc 42
-  let%bench "raw pointers" = exchange buf
-end
-
-module With_raw_pointers_as_int = struct
   type t = int (* 2-aligned pointer *)
 
-  external unsafe_get   : nativeint -> int -> char          = "%load8"
-  external unsafe_set   : nativeint -> int -> char  -> unit = "%store8"
-  external unsafe_get8  : nativeint -> int -> int           = "%load8"
-  external unsafe_set8  : nativeint -> int -> int   -> unit = "%store8"
-  external unsafe_get16 : nativeint -> int -> int           = "%load16"
-  external unsafe_set16 : nativeint -> int -> int   -> unit = "%store16"
-  external unsafe_get32 : nativeint -> int -> int32         = "%load32"
-  external unsafe_set32 : nativeint -> int -> int32 -> unit = "%store32"
+  external unsafe_get   : nativeint -> char          = "%load8"
+  external unsafe_set   : nativeint -> char  -> unit = "%store8"
+  external unsafe_get8  : nativeint -> int           = "%load8"
+  external unsafe_set8  : nativeint -> int   -> unit = "%store8"
+  external unsafe_get16 : nativeint -> int           = "%load16"
+  external unsafe_set16 : nativeint -> int   -> unit = "%store16"
+  external unsafe_get32 : nativeint -> int32         = "%load32"
+  external unsafe_set32 : nativeint -> int32 -> unit = "%store32"
 
   let wrap ptr =
     assert (Nativeint.logand ptr 1n = 0n);
     Nativeint.to_int (Nativeint.shift_right_logical ptr 1)
-  let unwrap ptr =
-    Nativeint.shift_left (Nativeint.of_int ptr) 1
+  let unwrap_shift ptr ofs =
+    Nativeint.add
+      (Nativeint.shift_left (Nativeint.of_int ptr) 1)
+      (Nativeint.of_int ofs)
 
-  let unsafe_get   t ofs = unsafe_get   (unwrap t) ofs
-  let unsafe_get8  t ofs = unsafe_get8  (unwrap t) ofs
-  let unsafe_get16 t ofs = unsafe_get16 (unwrap t) ofs
-  let unsafe_get32 t ofs = unsafe_get32 (unwrap t) ofs
+  let unsafe_get   t ofs = unsafe_get   (unwrap_shift t ofs)
+  let unsafe_get8  t ofs = unsafe_get8  (unwrap_shift t ofs)
+  let unsafe_get16 t ofs = unsafe_get16 (unwrap_shift t ofs)
+  let unsafe_get32 t ofs = unsafe_get32 (unwrap_shift t ofs)
 
-  let unsafe_set   t ofs x = unsafe_set   (unwrap t) ofs x
-  let unsafe_set8  t ofs x = unsafe_set8  (unwrap t) ofs x
-  let unsafe_set16 t ofs x = unsafe_set16 (unwrap t) ofs x
-  let unsafe_set32 t ofs x = unsafe_set32 (unwrap t) ofs x
+  let unsafe_set   t ofs x = unsafe_set   (unwrap_shift t ofs) x
+  let unsafe_set8  t ofs x = unsafe_set8  (unwrap_shift t ofs) x
+  let unsafe_set16 t ofs x = unsafe_set16 (unwrap_shift t ofs) x
+  let unsafe_set32 t ofs x = unsafe_set32 (unwrap_shift t ofs) x
 
   (*$print_string bench*)
   let exchange packet =
@@ -157,5 +125,57 @@ module With_raw_pointers_as_int = struct
   (*$*)
 
   let buf = wrap (malloc 42)
-  let%bench "raw pointers as int" = exchange buf
+  let%bench "raw pointers" = exchange buf
+end
+
+module With_raw_pointers_using_c_cstubs = struct
+  type t = int (* 2-aligned pointer *)
+
+  external unsafe_get   : nativeint -> char          = "caml_load_int8"
+  external unsafe_set   : nativeint -> char  -> unit = "caml_store_int8"
+  external unsafe_get8  : nativeint -> int           = "caml_load_int8"
+  external unsafe_set8  : nativeint -> int   -> unit = "caml_store_int8"
+  external unsafe_get16 : nativeint -> int           = "caml_load_int16"
+  external unsafe_set16 : nativeint -> int   -> unit = "caml_store_int16"
+  external unsafe_get32 : nativeint -> int32         = "caml_load_int32"
+  external unsafe_set32 : nativeint -> int32 -> unit = "caml_store_int32"
+
+  let wrap ptr =
+    assert (Nativeint.logand ptr 1n = 0n);
+    Nativeint.to_int (Nativeint.shift_right_logical ptr 1)
+  let unwrap_shift ptr ofs =
+    Nativeint.add
+      (Nativeint.shift_left (Nativeint.of_int ptr) 1)
+      (Nativeint.of_int ofs)
+
+  let unsafe_get   t ofs = unsafe_get   (unwrap_shift t ofs)
+  let unsafe_get8  t ofs = unsafe_get8  (unwrap_shift t ofs)
+  let unsafe_get16 t ofs = unsafe_get16 (unwrap_shift t ofs)
+  let unsafe_get32 t ofs = unsafe_get32 (unwrap_shift t ofs)
+
+  let unsafe_set   t ofs x = unsafe_set   (unwrap_shift t ofs) x
+  let unsafe_set8  t ofs x = unsafe_set8  (unwrap_shift t ofs) x
+  let unsafe_set16 t ofs x = unsafe_set16 (unwrap_shift t ofs) x
+  let unsafe_set32 t ofs x = unsafe_set32 (unwrap_shift t ofs) x
+
+  (*$print_string bench*)
+  let exchange packet =
+    let a = unsafe_get16 packet 0 in
+    let b = unsafe_get32 packet 2 in
+    unsafe_set16 packet 0 (unsafe_get16 packet 6);
+    unsafe_set32 packet 2 (unsafe_get32 packet 8);
+    unsafe_set16 packet 6 a;
+    unsafe_set32 packet 8 b;
+    unsafe_set16 packet 24 0;
+    let a = unsafe_get32 packet 26 in
+    unsafe_set32 packet 26 (unsafe_get32 packet 30);
+    unsafe_set32 packet 30 a;
+    let a = unsafe_get16 packet 34 in
+    unsafe_set16 packet 34 (unsafe_get16 packet 36);
+    unsafe_set16 packet 36 a;
+    unsafe_set16 packet 40 0
+  (*$*)
+
+  let buf = wrap (malloc 42)
+  let%bench "raw pointers" = exchange buf
 end
