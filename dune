@@ -1,0 +1,13 @@
+(library
+ (name mem_bench)
+ (libraries bigarray)
+ (modules mem_bench)
+ (library_flags -linkall)
+ (c_names ptr)
+ (ocamlopt_flags :standard -S)
+ (preprocess (pps ppx_bench)))
+
+(executable
+ (name main)
+ (modules main)
+ (libraries mem_bench core_bench.inline_benchmarks))

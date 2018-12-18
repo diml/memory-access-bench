@@ -41,7 +41,7 @@ module With_bigarray = struct
 end
 
 module With_bytes = struct
-  type t = string
+  type t = bytes
 
   external unsafe_get8  : t -> int -> int           = "%bytes_unsafe_get"
   external unsafe_set8  : t -> int -> int   -> unit = "%bytes_unsafe_set"

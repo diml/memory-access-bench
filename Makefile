@@ -1,5 +1,5 @@
 all:
-	jbuilder build main.exe
+	dune build main.exe
 
 cinaps:
 	cinaps -i *.ml
